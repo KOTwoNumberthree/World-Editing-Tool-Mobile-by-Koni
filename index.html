@@ -430,6 +430,7 @@ textarea.mono{font-family:var(--font-mono);font-size:11.5px;}
 <style>
 /* ===== MOBILE LAYER (追加のみ。既存CSS/データ構造は不変) ===== */
 #mapcanvaswrap,#mapcanvaswrap canvas{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+#view-map,#mapview,#mapbody,#mapcanvaswrap,#maptoolbar,#mapTimeline,#main{min-width:0;max-width:100%}
 #mchips,#msheet,#tlMore{display:none}
 @media (pointer:coarse){
   #mchips{display:flex}
@@ -451,6 +452,9 @@ textarea.mono{font-family:var(--font-mono);font-size:11.5px;}
   .view{padding:12px 10px}.cardgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
   .kv{grid-template-columns:88px 1fr}.formgrid,.smgr,.dash-cols{grid-template-columns:1fr!important}
   input,select,textarea{font-size:16px!important}
+  .dash-cols>*,.panel,.view>*{min-width:0;max-width:100%}
+  .addrow{flex-wrap:wrap}.addrow input,.addrow select{flex:1 1 90px;width:auto!important;min-width:0}
+  .toolbar{flex-wrap:wrap}.toolbar .search{min-width:0;flex:1 1 140px}
   .view table,.mbody table{display:block;overflow-x:auto;max-width:100%}
   .chartwrap canvas,.view canvas{max-width:100%;height:auto}
   /* モーダル=ボトムシート */
@@ -458,12 +462,13 @@ textarea.mono{font-family:var(--font-mono);font-size:11.5px;}
   .modal,.modal.wide{width:100%!important;max-width:100%;max-height:calc(var(--vvh) - env(safe-area-inset-top,0px) - 6px);border-radius:14px 14px 0 0}
   .modal .mbody{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .modal .mfoot{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));flex-wrap:wrap}
+  html.tut-m .modal,html.tut-m .modal.wide{max-height:calc(var(--vvh) - var(--tuth,0px) - 12px)}
+  #tutDesc{max-height:24vh}
   /* 検索=全画面 */
   #searchOverlay{padding-top:0;height:var(--vvh);bottom:auto}
   #searchBox{width:100vw;max-width:100vw;height:var(--vvh);border-radius:0}
   #searchResults{max-height:calc(var(--vvh) - 60px)}
   /* 地図 */
-  #view-map,#mapview,#mapbody,#mapcanvaswrap,#maptoolbar,#mapTimeline,#main{min-width:0;max-width:100%}
   #mapTimeline{overflow:hidden}#tlMore{display:inline-flex;align-items:center;justify-content:center}
   #maptoolbar{-webkit-overflow-scrolling:touch;padding:5px 6px}#maptoolbar>*{flex-shrink:0}
   #mapTimeline{padding:6px 8px}
@@ -639,7 +644,6 @@ textarea.mono{font-family:var(--font-mono);font-size:11.5px;}
               <select id="tlMode" title="再生方式"><option value="years">年ごとに連続再生</option><option value="states">地図状態を順番に表示</option></select>
               <label class="lp-chk" style="margin:0;"><input type="checkbox" id="tlLoop">ループ</label>
               <button class="btn small" id="tlRangePlay">▶ タイムラプス再生</button>
-              <button class="btn small" id="tlExportBtn">⇩ タイムラプス出力</button>
             </div>
           </div>
         </div>
@@ -1466,7 +1470,6 @@ function createWorld(opts){
     metrics: deepClone(DEFAULT_METRICS), statistics: [],
     assets: [], eras: [], history: [],
     refImages: [],
-    analysis:{settings:{climate:{equatorY:mapH/2,poleY:0,seaLevel:1}},candidates:{},travelHistory:[]}, military:{operations:[],fronts:[],units:[],occupations:[]}, dynasties:[], economy:{resources:[],tradeRoutes:[],influences:[],namingCultures:[],nameCandidates:[]},
     createdAt: Date.now(), updatedAt: Date.now(),
   };
   Store.reset(id);
@@ -1492,20 +1495,6 @@ function normalizeWorld(w){
   w.calendarUnit = w.calendarUnit || '年'; w.baseUnit = w.baseUnit || 'km²';
   w.startYear = w.startYear!==undefined?w.startYear:0; w.endYear = w.endYear!==undefined?w.endYear:1000;
   w.currentYear = w.currentYear!==undefined?w.currentYear:w.startYear;
-  if(!w.calendar || typeof w.calendar!=='object') w.calendar={};
-  const cal=w.calendar;
-  cal.yearDays=Number(cal.yearDays)||360; cal.months=Math.max(1,Number(cal.months)||12);
-  if(!Array.isArray(cal.monthLengths)||cal.monthLengths.length!==cal.months) cal.monthLengths=Array.from({length:cal.months},(_,i)=>Math.max(1,Math.floor(cal.yearDays/cal.months)));
-  if(cal.monthLengths.reduce((a,b)=>a+Number(b||0),0)!==cal.yearDays){ cal.yearDays=cal.monthLengths.reduce((a,b)=>a+Math.max(1,Number(b||0)),0); }
-  cal.weekDays=Math.max(1,Number(cal.weekDays)||7);
-  if(!Array.isArray(cal.weekdayNames)||cal.weekdayNames.length!==cal.weekDays) cal.weekdayNames=Array.from({length:cal.weekDays},(_,i)=>'曜'+(i+1));
-  if(!Array.isArray(cal.monthNames)||cal.monthNames.length!==cal.months) cal.monthNames=Array.from({length:cal.months},(_,i)=>String(i+1)+'月');
-  cal.leap=cal.leap&&typeof cal.leap==='object'?cal.leap:{enabled:false,every:4,month:cal.months,day:cal.monthLengths[cal.months-1]||30,offset:0};
-  cal.leap.enabled=!!cal.leap.enabled; cal.leap.every=Math.max(1,Number(cal.leap.every)||4); cal.leap.month=Math.min(cal.months,Math.max(1,Number(cal.leap.month)||cal.months)); cal.leap.day=Math.max(1,Number(cal.leap.day)||cal.monthLengths[cal.leap.month-1]);
-  cal.epochYear=cal.epochYear!==undefined?Number(cal.epochYear):w.startYear; cal.eraName=cal.eraName||'';
-  if(!Array.isArray(cal.moons)||!cal.moons.length) cal.moons=[{id:uid('moon'),name:'月',cycle:29.530588,phaseOffset:0}];
-  cal.moons.forEach(m=>{if(!m.id)m.id=uid('moon');m.name=m.name||'月';m.cycle=Math.max(.1,Number(m.cycle)||29.530588);m.phaseOffset=Number(m.phaseOffset)||0;});
-  if(!cal.astronomy||typeof cal.astronomy!=='object') cal.astronomy={}; if(!Array.isArray(cal.astronomy.events)) cal.astronomy.events=[];
   w.mapWidth = w.mapWidth||DEFAULT_MAP_W; w.mapHeight = w.mapHeight||DEFAULT_MAP_H;
   w.extentW = w.extentW||w.mapWidth; w.extentH = w.extentH||w.mapHeight; w.kmPerUnit = w.kmPerUnit||1;
   if(!Array.isArray(w.terrainTypes) || !w.terrainTypes.length) w.terrainTypes = deepClone(DEFAULT_TERRAIN);
@@ -1515,10 +1504,6 @@ function normalizeWorld(w){
   w.nationColorOpacity = w.nationColorOpacity!==undefined ? w.nationColorOpacity : 0.5;
   w.mapMode = w.mapMode || 'terrain-political';
   w.pixelGridEnabled = !!w.pixelGridEnabled;
-  if(!w.analysis || typeof w.analysis!=='object') w.analysis={};
-  if(!w.analysis.settings) w.analysis.settings={};
-  if(!w.analysis.candidates) w.analysis.candidates={};
-  if(!Array.isArray(w.analysis.travelHistory)) w.analysis.travelHistory=[]; if(!w.military||typeof w.military!=='object') w.military={}; if(!Array.isArray(w.military.operations)) w.military.operations=[]; if(!Array.isArray(w.military.fronts)) w.military.fronts=[]; if(!Array.isArray(w.military.units)) w.military.units=[]; if(!Array.isArray(w.military.occupations)) w.military.occupations=[]; if(!Array.isArray(w.dynasties)) w.dynasties=[]; if(!w.economy||typeof w.economy!=='object') w.economy={}; if(!Array.isArray(w.economy.resources)) w.economy.resources=[]; if(!Array.isArray(w.economy.tradeRoutes)) w.economy.tradeRoutes=[]; if(!Array.isArray(w.economy.influences)) w.economy.influences=[]; if(!Array.isArray(w.economy.namingCultures)) w.economy.namingCultures=[]; if(!Array.isArray(w.economy.nameCandidates)) w.economy.nameCandidates=[];
   ['customLayers','regions','nations','cities','events','wars','treaties','relations','people','organizations','statistics','assets','eras','history','areas','worldlines','mapStates','refImages'].forEach(k=>{ if(!Array.isArray(w[k])) w[k]=[]; });
   w.refImages.forEach(r=>{
     if(!r.id) r.id = uid('refimg');
@@ -1785,7 +1770,6 @@ const MapView = {
   rectSel:null, clip:null, pasteOpts:{skipZero:true, layers:{terrain:true,elev:true,nation:true,area:true}}, copyLayers:{terrain:true,elev:true,nation:true,area:true},
   isPanning:false, spaceDown:false, _neverFit:false, _raf:0, baseDirty:true, overlayDirty:true,
   stats:null, statsTimer:0,
-  travelPickStage:0, travelStart:null, travelEnd:null,
 };
 
 const MAP_MODES = [
@@ -2386,9 +2370,6 @@ function renderOverlay(){
   const ctx=cv.getContext('2d'); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height);
   const sid=currentStateId(); if(!sid) return; const R=resolveState(sid); const S=MapView.scale;
   ctx.setTransform(S,0,0,S,MapView.offX,MapView.offY); ctx.lineJoin='round'; ctx.lineCap='round';
-  renderWorldAnalysisOverlay(ctx, S);
-  drawMilitaryMapOverlay(ctx, S);
-  drawEconomyCultureOverlay(ctx, S);
   const sel=MapView.selection;
   if(sel){
     ctx.strokeStyle='#ff5a5a'; ctx.lineWidth=2.6/S;
@@ -4065,7 +4046,6 @@ const MAP_TOOLS = [
   {sep:true},
   {id:'admin', icon:'⬡', tip:'行政区画(点と線)|点を打つと、その点とマウスがリアルタイムに線で結ばれます。最初の点に戻る/Enter/ダブルクリックで閉じます。塗りつぶしではなく境界線として表示されます'},
   {id:'vertex', icon:'◇', tip:'頂点編集|行政区画や線の頂点をドラッグで移動、Alt+クリックで頂点追加、頂点削除モードまたはDeleteで削除します'},
-  {id:'travel', icon:'⇢', tip:'移動時間計算|地図上で出発地点と到着地点を指定し、既存の地形・標高・道路・河川などを考慮した候補経路を計算します'},
   {id:'river', icon:'≈', tip:'河川|クリックした瞬間から線がマウスに追従します。クリックで頂点確定、ダブルクリック/Enterで完成、Escで取消'},
   {id:'road', icon:'╌', tip:'道路|クリックした瞬間から線がマウスに追従します'},
   {id:'rail', icon:'╫', tip:'鉄道|クリックした瞬間から線がマウスに追従します'},
@@ -4083,67 +4063,6 @@ const LINE_TOOLS = ['river','road','rail','border','range'];
 const BRUSH_TOOLS = ['brush-terrain','brush-elev','brush-nation','brush-area','eraser'];
 const SIZE_PRESETS = [1,2,5,10,25,50,100,250,500];
 let mapInitialized = false, mapCanvasWired = false;
-
-
-/* ---------- Phase 2: 軍事・家系統合 ---------- */
-function militaryDateInRange(x,y){ const a=x.start===''||x.start==null?-Infinity:Number(x.start), b=x.end===''||x.end==null?Infinity:Number(x.end); return y>=a&&y<=b; }
-function mapPointSvgPath(points){ return (points||[]).map((p,i)=>(i?'L':'M')+Number(p.x).toFixed(1)+','+Number(p.y).toFixed(1)).join(' '); }
-function openHistoryLabModal(){
-  const w=W(); if(!w) return;
-  const tabs=`<div class="tabs" id="hlTabs"><button class="tab active" data-tab="ops">作戦</button><button class="tab" data-tab="fronts">戦線</button><button class="tab" data-tab="units">部隊</button><button class="tab" data-tab="dyn">王朝・家系</button></div><div id="hlBody"></div>`;
-  openWideModal('軍事・家系統合',tabs,[{label:'閉じる',onClick:closeModal}]);
-  const body=document.getElementById('hlBody');
-  function draw(tab){
-    document.querySelectorAll('#hlTabs .tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
-    if(tab==='ops'){
-      body.innerHTML=`<div class="toolbar"><button class="btn primary" id="hlNewOp">＋ 作戦を追加</button><span class="hint">戦争・人物・国家・地図・タイムラインを参照できます。地図上の経路は候補/記録として保存します。</span></div><div class="cardgrid">${w.military.operations.map(o=>{const war=warById(o.warId), cmd=personById(o.commanderId);return `<div class="card"><h3>${esc(o.name||'無名の作戦')}</h3><div class="meta">${esc(yearLabel(o.start,w))} ～ ${o.end===''?'継続中':esc(yearLabel(o.end,w))}</div><p>${esc(war?war.name:'戦争未設定')} / 指揮官: ${esc(cmd?cmd.name:'未設定')}</p><p>${esc(o.objective||'')}</p><button class="btn small" data-op="${o.id}">編集</button> <button class="btn small danger" data-opdel="${o.id}">削除</button></div>`}).join('')}</div>`;
-      document.getElementById('hlNewOp').onclick=()=>openOperationModal(null,()=>draw('ops'));
-      body.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>openOperationModal(b.dataset.op,()=>draw('ops')));
-      body.querySelectorAll('[data-opdel]').forEach(b=>b.onclick=()=>{const id=b.dataset.opdel;const o=w.military.operations.find(x=>x.id===id);confirmDelete('作戦「'+(o?.name||'')+'」を削除しますか？',()=>{mutate('作戦を削除: '+(o?.name||''),()=>w.military.operations=w.military.operations.filter(x=>x.id!==id));draw('ops');renderMap();});});
-    }else if(tab==='fronts'){
-      body.innerHTML=`<div class="toolbar"><button class="btn primary" id="hlNewFront">＋ 戦線を追加</button><span class="hint">戦線は地図座標の線として保存し、戦争・国家・有効期間に関連付けます。</span></div><div class="cardgrid">${w.military.fronts.map(f=>`<div class="card"><h3>${esc(f.name||'無名の戦線')}</h3><div class="meta">${esc(yearLabel(f.start,w))} ～ ${f.end===''?'継続中':esc(yearLabel(f.end,w))}</div><p>${esc((nationById(f.sideA)||{}).name||'—')} ↔ ${esc((nationById(f.sideB)||{}).name||'—')}</p><button class="btn small" data-front="${f.id}">編集</button></div>`).join('')}</div>`;
-      document.getElementById('hlNewFront').onclick=()=>openFrontModal(null,()=>draw('fronts'));
-      body.querySelectorAll('[data-front]').forEach(b=>b.onclick=()=>openFrontModal(b.dataset.front,()=>draw('fronts')));
-    }else if(tab==='units'){
-      body.innerHTML=`<div class="toolbar"><button class="btn primary" id="hlNewUnit">＋ 部隊位置を追加</button></div><div class="cardgrid">${w.military.units.map(u=>`<div class="card"><h3>${esc(u.name||'無名部隊')}</h3><p>${esc((nationById(u.nationId)||{}).name||'所属未設定')} / ${esc((personById(u.commanderId)||{}).name||'指揮官未設定')}</p><p>位置: ${Math.round(u.x||0)}, ${Math.round(u.y||0)} / ${esc(yearLabel(u.start,w))}</p><button class="btn small" data-unit="${u.id}">編集</button></div>`).join('')}</div>`;
-      document.getElementById('hlNewUnit').onclick=()=>openUnitModal(null,()=>draw('units'));
-      body.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>openUnitModal(b.dataset.unit,()=>draw('units')));
-    }else{
-      body.innerHTML=`<div class="toolbar"><button class="btn primary" id="hlNewDyn">＋ 王朝を追加</button><span class="hint">人物の親子・配偶者・継承関係を既存人物IDで保持します。</span></div><div class="cardgrid">${w.dynasties.map(d=>`<div class="card"><h3>${esc(d.name||'無名王朝')}</h3><p>${esc(d.description||'')}</p><p>人物 ${((d.memberIds||[]).length)}人 / 統治国家 ${(d.nationIds||[]).map(id=>esc((nationById(id)||{}).name||'')).join('、')||'未設定'}</p><button class="btn small" data-dyn="${d.id}">編集</button></div>`).join('')}</div>`;
-      document.getElementById('hlNewDyn').onclick=()=>openDynastyModal(null,()=>draw('dyn'));
-      body.querySelectorAll('[data-dyn]').forEach(b=>b.onclick=()=>openDynastyModal(b.dataset.dyn,()=>draw('dyn')));
-    }
-  }
-  document.querySelectorAll('#hlTabs .tab').forEach(b=>b.onclick=()=>draw(b.dataset.tab)); draw('ops');
-}
-function openOperationModal(id,done){
-  const w=W(), isNew=!id, x=isNew?{id:uid('op'),name:'',warId:'',start:w.currentYear,end:'',commanderId:'',participants:[],objective:'',startPoint:null,targetPoint:null,path:[],result:'',battleIds:[]} : deepClone(w.military.operations.find(o=>o.id===id));
-  const body=`<div class="formgrid"><div><label>作戦名</label><input id="opName" value="${esc(x.name)}"></div><div><label>戦争</label><select id="opWar"><option value="">未設定</option>${w.wars.map(z=>`<option value="${z.id}" ${z.id===x.warId?'selected':''}>${esc(z.name)}</option>`).join('')}</select></div><div><label>開始年</label><input type="number" id="opStart" value="${x.start}"></div><div><label>終了年</label><input type="number" id="opEnd" value="${x.end}"></div><div><label>指揮官</label><select id="opCmd"><option value="">未設定</option>${w.people.map(p=>`<option value="${p.id}" ${p.id===x.commanderId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><div class="full"><label>目的</label><input id="opObj" value="${esc(x.objective)}"></div><div class="full"><label>開始地点 / 目標地点 / 経路</label><div class="hint">地図上で指定する場合は「保存」後、作戦を選択して地図の軍事表示へ追加できます。</div></div><div class="full"><label>結果</label><textarea id="opResult" rows="3">${esc(x.result)}</textarea></div></div>`;
-  openModal(isNew?'軍事作戦を追加':'軍事作戦を編集',body,[{label:'キャンセル',onClick:closeModal},{label:'保存',cls:'primary',onClick:()=>{x.name=document.getElementById('opName').value.trim()||'無名の作戦';x.warId=document.getElementById('opWar').value;x.start=numOrEmpty(document.getElementById('opStart').value);x.end=numOrEmpty(document.getElementById('opEnd').value);x.commanderId=document.getElementById('opCmd').value;x.objective=document.getElementById('opObj').value;x.result=document.getElementById('opResult').value;mutate(isNew?'軍事作戦を追加: '+x.name:'軍事作戦を編集: '+x.name,()=>{if(isNew)w.military.operations.push(x);else Object.assign(w.military.operations.find(o=>o.id===id),x)});closeModal();done&&done();renderMap();}}]);
-}
-function openFrontModal(id,done){
-  const w=W(),isNew=!id,x=isNew?{id:uid('front'),name:'',warId:'',start:w.currentYear,end:'',sideA:'',sideB:'',points:[]} : deepClone(w.military.fronts.find(f=>f.id===id));
-  const body=`<div class="formgrid"><div><label>戦線名</label><input id="frName" value="${esc(x.name)}"></div><div><label>戦争</label><select id="frWar"><option value="">未設定</option>${w.wars.map(z=>`<option value="${z.id}" ${z.id===x.warId?'selected':''}>${esc(z.name)}</option>`).join('')}</select></div><div><label>開始年</label><input type="number" id="frStart" value="${x.start}"></div><div><label>終了年</label><input type="number" id="frEnd" value="${x.end}"></div><div><label>勢力A</label><select id="frA"><option value="">—</option>${w.nations.map(n=>`<option value="${n.id}" ${n.id===x.sideA?'selected':''}>${esc(n.name)}</option>`).join('')}</select></div><div><label>勢力B</label><select id="frB"><option value="">—</option>${w.nations.map(n=>`<option value="${n.id}" ${n.id===x.sideB?'selected':''}>${esc(n.name)}</option>`).join('')}</select></div></div>`;
-  openModal(isNew?'戦線を追加':'戦線を編集',body,[{label:'キャンセル',onClick:closeModal},{label:'保存',cls:'primary',onClick:()=>{x.name=document.getElementById('frName').value.trim()||'無名の戦線';x.warId=document.getElementById('frWar').value;x.start=numOrEmpty(document.getElementById('frStart').value);x.end=numOrEmpty(document.getElementById('frEnd').value);x.sideA=document.getElementById('frA').value;x.sideB=document.getElementById('frB').value;mutate(isNew?'戦線を追加: '+x.name:'戦線を編集: '+x.name,()=>{if(isNew)w.military.fronts.push(x);else Object.assign(w.military.fronts.find(f=>f.id===id),x)});closeModal();done&&done();renderMap();}}]);
-}
-function openUnitModal(id,done){
-  const w=W(),isNew=!id,x=isNew?{id:uid('unit'),name:'',nationId:'',commanderId:'',x:0,y:0,start:w.currentYear,end:'',strength:'',notes:''}:deepClone(w.military.units.find(u=>u.id===id));
-  const body=`<div class="formgrid"><div><label>部隊名</label><input id="unName" value="${esc(x.name)}"></div><div><label>所属国家</label><select id="unNation"><option value="">—</option>${w.nations.map(n=>`<option value="${n.id}" ${n.id===x.nationId?'selected':''}>${esc(n.name)}</option>`).join('')}</select></div><div><label>指揮官</label><select id="unCmd"><option value="">—</option>${w.people.map(p=>`<option value="${p.id}" ${p.id===x.commanderId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><div><label>X</label><input type="number" id="unX" value="${x.x}"></div><div><label>Y</label><input type="number" id="unY" value="${x.y}"></div><div><label>開始年</label><input type="number" id="unStart" value="${x.start}"></div><div><label>兵力</label><input id="unStrength" value="${esc(x.strength)}"></div></div>`;
-  openModal(isNew?'部隊位置を追加':'部隊位置を編集',body,[{label:'キャンセル',onClick:closeModal},{label:'保存',cls:'primary',onClick:()=>{x.name=document.getElementById('unName').value.trim()||'無名部隊';x.nationId=document.getElementById('unNation').value;x.commanderId=document.getElementById('unCmd').value;x.x=Number(document.getElementById('unX').value)||0;x.y=Number(document.getElementById('unY').value)||0;x.start=numOrEmpty(document.getElementById('unStart').value);x.strength=document.getElementById('unStrength').value;mutate(isNew?'部隊位置を追加: '+x.name:'部隊位置を編集: '+x.name,()=>{if(isNew)w.military.units.push(x);else Object.assign(w.military.units.find(u=>u.id===id),x)});closeModal();done&&done();renderMap();}}]);
-}
-function openDynastyModal(id,done){
-  const w=W(),isNew=!id,x=isNew?{id:uid('dyn'),name:'',description:'',memberIds:[],nationIds:[],founderId:'',start:w.currentYear,end:'',successionNotes:''}:deepClone(w.dynasties.find(d=>d.id===id));
-  const body=`<div class="formgrid"><div><label>王朝・家系名</label><input id="dyName" value="${esc(x.name)}"></div><div><label>開始年</label><input type="number" id="dyStart" value="${x.start}"></div><div><label>終了年</label><input type="number" id="dyEnd" value="${x.end}"></div><div><label>創始者</label><select id="dyFounder"><option value="">—</option>${w.people.map(p=>`<option value="${p.id}" ${p.id===x.founderId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><div class="full"><label>所属国家</label><div id="dyNations"></div></div><div class="full"><label>構成人物</label><div id="dyMembers"></div></div><div class="full"><label>説明・継承メモ</label><textarea id="dyDesc" rows="4">${esc(x.description||'')}\n${esc(x.successionNotes||'')}</textarea></div></div>`;
-  openModal(isNew?'王朝・家系を追加':'王朝・家系を編集',body,[{label:'キャンセル',onClick:closeModal},{label:'保存',cls:'primary',onClick:()=>{x.name=document.getElementById('dyName').value.trim()||'無名王朝';x.start=numOrEmpty(document.getElementById('dyStart').value);x.end=numOrEmpty(document.getElementById('dyEnd').value);x.founderId=document.getElementById('dyFounder').value;x.description=document.getElementById('dyDesc').value;mutate(isNew?'王朝・家系を追加: '+x.name:'王朝・家系を編集: '+x.name,()=>{if(isNew)w.dynasties.push(x);else Object.assign(w.dynasties.find(d=>d.id===id),x)});closeModal();done&&done();}}]);
-  multiSelectChips('dyNations',w.nations,x.nationIds,(ids)=>x.nationIds=ids); multiSelectChips('dyMembers',w.people,x.memberIds,(ids)=>x.memberIds=ids);
-}
-function drawMilitaryMapOverlay(ctx,S,P){
-  const w=W(); if(!w||!w.military) return; const y=w.currentYear;
-  const px=p=>({x:p.x*P.x,y:p.y*P.y});
-  (w.military.fronts||[]).filter(f=>militaryDateInRange(f,y)&&(f.points||[]).length>1).forEach(f=>{ctx.save();ctx.strokeStyle='#e05b5b';ctx.lineWidth=3;ctx.setLineDash([10,6]);ctx.beginPath();f.points.forEach((p,i)=>{const q=px(p);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.stroke();ctx.restore();});
-  (w.military.operations||[]).filter(o=>militaryDateInRange(o,y)&&(o.path||[]).length>1).forEach(o=>{ctx.save();ctx.strokeStyle='#f0b44c';ctx.lineWidth=3;ctx.setLineDash([]);ctx.beginPath();o.path.forEach((p,i)=>{const q=px(p);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.stroke();const a=px(o.path[o.path.length-1]),b=px(o.path[Math.max(0,o.path.length-2)]),ang=Math.atan2(a.y-b.y,a.x-b.x);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(a.x-12*Math.cos(ang-.45),a.y-12*Math.sin(ang-.45));ctx.lineTo(a.x-12*Math.cos(ang+.45),a.y-12*Math.sin(ang+.45));ctx.closePath();ctx.fillStyle='#f0b44c';ctx.fill();ctx.restore();});
-  (w.military.units||[]).filter(u=>militaryDateInRange(u,y)).forEach(u=>{const q=px(u);ctx.save();ctx.fillStyle='#f4e9c6';ctx.strokeStyle='#b34b4b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(q.x,q.y,6,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='11px sans-serif';ctx.fillStyle='#f4e9c6';ctx.fillText(u.name||'部隊',q.x+9,q.y-8);ctx.restore();});
-}
 
 function renderMapUI(){
   ensureLabelsLayer();
@@ -4177,10 +4096,6 @@ function renderMapToolbar(){
      <button class="btn small" id="stateMgrBtn" data-tip="年代・世界線|年代ごとの地図(差分)・分岐・メイン系列・関連イベントを管理します">🕰 年代・世界線</button>
      <button class="btn small" id="canvasBtn" data-tip="キャンバス/解像度|地図の解像度変更と、上下左右へのキャンバス拡張を行います">⤢ キャンバス</button>
      <button class="btn small" id="integrityBtn" data-tip="整合性チェック|国家・行政区画・都市の矛盾を洗い出します">✓ 整合性</button>
-     <button class="btn small" id="worldLabBtn" data-tip="世界解析|移動時間・気候・河川を既存地図から候補計算します。自動適用はしません">🧭 世界解析</button>
-     <button class="btn small" id="historyLabBtn" data-tip="軍事・家系|戦争・作戦・戦線・家系・王朝を既存データと関連付けて管理します">⚔ 軍事・家系</button>
-     <button class="btn small" id="economyLabBtn" data-tip="経済・文化|資源・交易路・影響圏・文化別地名候補を既存データと関連付けて管理します">💰 経済・文化</button>
-     <button class="btn small" id="calendarLabBtn" data-tip="暦・天象|独自暦・月齢・天象イベントを世界設定と既存イベントに関連付けます">☾ 暦・天象</button>
      <button class="btn small" id="mapPngBtn" data-tip="PNG出力|表示中の地図をPNGで保存します">PNG</button>
      <button class="btn small" id="mapPngHiBtn" data-tip="全体PNG出力|地図全体を指定サイズでPNG出力します">全体PNG</button>
      <div class="sep"></div>
@@ -4192,9 +4107,6 @@ function renderMapToolbar(){
   document.getElementById('nationOpacityRange').addEventListener('change', (e)=>{ mutate('国家色の不透明度', ()=>{ w.nationColorOpacity = Number(e.target.value); }); });
   document.getElementById('pixelGridToggle').addEventListener('click', ()=>{ mutate('ピクセルグリッド', ()=>{ w.pixelGridEnabled = !w.pixelGridEnabled; }); document.getElementById('pixelGridToggle').classList.toggle('active', w.pixelGridEnabled); renderMap(); });
   document.getElementById('integrityBtn').addEventListener('click', openIntegrityModal);
-  document.getElementById('worldLabBtn').addEventListener('click', openWorldLabModal);
-  document.getElementById('historyLabBtn').addEventListener('click', openHistoryLabModal);
-  document.getElementById('economyLabBtn').addEventListener('click', openEconomyCultureModal);
   document.getElementById('mapPngBtn').addEventListener('click', ()=> exportMapImage(1));
   document.getElementById('mapPngHiBtn').addEventListener('click', openExportResolutionModal);
   document.getElementById('stateMgrBtn').addEventListener('click', ()=> openStateManager());
@@ -4727,138 +4639,6 @@ function handleRefImageFile(file){
   reader.readAsDataURL(file);
 }
 
-
-/* =========================================================
-   世界解析 Phase 1: 地理リアリティ
-   ・既存ラスター/ベクターを読み取り、候補を別領域へ保存
-   ・候補はユーザーが「適用」するまで既存データを変更しない
-   ========================================================= */
-const TRAVEL_MODES = {
-  walk:{label:'徒歩',speed:5,terrain:{forest:.65,jungle:.55,wetland:.55,hills:.7,mountain:.45,highmountain:.25,snow:.45,desert:.65}},
-  horse:{label:'騎乗',speed:9,terrain:{forest:.75,jungle:.65,wetland:.65,hills:.8,mountain:.5,highmountain:.25,snow:.5,desert:.8}},
-  march:{label:'行軍',speed:4,terrain:{forest:.7,jungle:.55,wetland:.5,hills:.65,mountain:.4,highmountain:.2,snow:.4,desert:.55}},
-  wagon:{label:'馬車',speed:7,terrain:{forest:.45,jungle:.35,wetland:.35,hills:.55,mountain:.3,highmountain:.15,snow:.3,desert:.65}},
-  boat:{label:'船',speed:12,terrain:{river:1,lake:1,sea:1}},
-  sail:{label:'帆船',speed:18,terrain:{sea:1,lake:.75,river:.5}},
-};
-function analysisEnsure(){ const w=W(); if(!w.analysis) w.analysis={settings:{},candidates:{},travelHistory:[]}; if(!w.analysis.settings) w.analysis.settings={}; if(!w.analysis.candidates) w.analysis.candidates={}; if(!Array.isArray(w.analysis.travelHistory)) w.analysis.travelHistory=[]; return w.analysis; }
-function analysisSample(R, x,y, stride){ const px=Math.floor(clamp(x,0,W().mapWidth-1)), py=Math.floor(clamp(y,0,W().mapHeight-1)); return {terrain:getPx(R,'terrain',px,py),elev:getPx(R,'elev',px,py)}; }
-function terrainNameByRid(rid){ const t=terrainByRid(W(),rid); return t?t.name:''; }
-function terrainKey(rid){ const t=terrainByRid(W(),rid); return t?t.id:''; }
-function classifyClimate(temp,precip){ if(temp>=24) return precip>=1800?'熱帯雨林':precip>=800?'サバナ':'熱帯乾燥'; if(temp>=18) return precip<300?'砂漠':precip<700?'ステップ':precip<1400?'温帯':'温暖湿潤'; if(temp>=8) return precip<350?'半乾燥':precip<700?'温帯乾燥':'温帯湿潤'; if(temp>=0) return precip<300?'亜寒帯乾燥':precip<700?'亜寒帯':'冷温帯'; return precip<150?'氷雪':'ツンドラ'; }
-function climateColor(name){ return ({'熱帯雨林':'#1d6b3a','サバナ':'#8da63f','熱帯乾燥':'#c8a64b','砂漠':'#d2b36b','ステップ':'#a8a35a','温帯':'#6f9a6a','温暖湿潤':'#4e8b67','温帯乾燥':'#8c9a63','温帯湿潤':'#5d8d71','亜寒帯乾燥':'#7c8e88','亜寒帯':'#65859a','冷温帯':'#7699a9','ツンドラ':'#aabfc8','氷雪':'#e2edf2'})[name]||'#777'; }
-function generateClimateCandidate(){
-  const w=W(), a=analysisEnsure(), R=resolveState(currentStateId()); if(!R) return null;
-  const set=Object.assign({equatorY:w.mapHeight/2,poleY:0,seaLevel:1},a.settings.climate||{});
-  const stride=Math.max(8,Math.floor(Math.max(w.mapWidth,w.mapHeight)/180)); const cols=Math.ceil(w.mapWidth/stride), rows=Math.ceil(w.mapHeight/stride), cells=[];
-  const sea=Number(set.seaLevel)||1;
-  for(let gy=0;gy<rows;gy++){ for(let gx=0;gx<cols;gx++){
-    const x=Math.min(w.mapWidth-1,gx*stride+stride/2), y=Math.min(w.mapHeight-1,gy*stride+stride/2), s=analysisSample(R,x,y,stride);
-    const tk=terrainKey(s.terrain); const lat=Math.abs((y-Number(set.equatorY))/(Math.max(1,Math.abs(Number(set.poleY)-Number(set.equatorY))))); let temp=30-30*clamp(lat,0,1)-s.elev*.055;
-    let precip=900-220*clamp(lat,0,1)+((tk==='sea'||tk==='shallow'||tk==='lake')?1100:0);
-    if(['mountain','highmountain','snow','hills'].includes(tk)) precip+=220;
-    if(tk==='desert') precip-=400; if(tk==='wetland'||tk==='jungle') precip+=500; if(s.elev<sea && tk!=='sea') precip+=250;
-    const climate=classifyClimate(temp,Math.max(0,precip)); cells.push({x:gx,y:gy,climate,temp:Math.round(temp*10)/10,precip:Math.round(precip)});
-  }}
-  const cand={id:uid('climate'),createdAt:Date.now(),source:'auto-climate',stride,cols,rows,cells,settings:set}; a.candidates.climate=cand; markMeta(); return cand;
-}
-function generateRiverCandidate(){
-  const w=W(), a=analysisEnsure(), R=resolveState(currentStateId()); if(!R) return null;
-  const stride=Math.max(6,Math.floor(Math.max(w.mapWidth,w.mapHeight)/220)), cols=Math.ceil(w.mapWidth/stride), rows=Math.ceil(w.mapHeight/stride), elev=new Float32Array(cols*rows), land=new Uint8Array(cols*rows);
-  for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){ const s=analysisSample(R,Math.min(w.mapWidth-1,x*stride+stride/2),Math.min(w.mapHeight-1,y*stride+stride/2)); elev[y*cols+x]=s.elev; land[y*cols+x]=!['sea','shallow','lake'].includes(terrainKey(s.terrain)); }
-  const sources=[]; for(let y=1;y<rows-1;y++) for(let x=1;x<cols-1;x++){ const i=y*cols+x; if(!land[i]||elev[i]<35) continue; let higher=0; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) if(elev[(y+dy)*cols+x+dx]>elev[i]+8) higher++; if(higher>=4) sources.push({x,y,h:elev[i]}); }
-  sources.sort((a,b)=>b.h-a.h); const used=new Set(), rivers=[];
-  for(const src of sources.slice(0,60)){ let x=src.x,y=src.y, pts=[], seen=new Set(), steps=0; while(steps++<Math.max(cols,rows)*2){ const i=y*cols+x; if(seen.has(i)) break; seen.add(i); pts.push({x:Math.min(w.extentW-1,(x+.5)*stride),y:Math.min(w.extentH-1,(y+.5)*stride)}); if(!land[i] || elev[i]<=5) break; let best={x,y,h:elev[i]}; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ if(!dx&&!dy) continue; const nx=x+dx,ny=y+dy; if(nx<0||ny<0||nx>=cols||ny>=rows) continue; const nh=elev[ny*cols+nx]; if(nh<best.h-1) best={x:nx,y:ny,h:nh}; } if(best.x===x&&best.y===y) break; x=best.x;y=best.y; }
-    if(pts.length>=6){ const key=pts.slice(0,3).map(p=>Math.round(p.x)+','+Math.round(p.y)).join('|'); if(!used.has(key)){used.add(key); rivers.push({id:uid('riverCandidate'),points:pts,source:{x:src.x,y:src.y}}); } }
-    if(rivers.length>=18) break;
-  }
-  const cand={id:uid('rivers'),createdAt:Date.now(),source:'auto-river',stride,cols,rows,rivers}; a.candidates.rivers=cand; markMeta(); return cand;
-}
-function nearestTravelCity(x,y){ const w=W(); let best=null,bd=Infinity; w.cities.forEach(c=>{const d=Math.hypot(c.x-x,c.y-y); if(d<bd){bd=d;best=c;}}); return best; }
-function travelLineBonus(R,x,y,mode){
-  if(!['horse','march','wagon'].includes(mode)) return 1;
-  let best=Infinity; R.lines.forEach(l=>{ if(!['road','rail'].includes(l.kind)) return; for(let i=1;i<l.points.length;i++) best=Math.min(best,distToSeg(x,y,l.points[i-1],l.points[i])); });
-  if(best<1.5) return mode==='wagon'?.45:.6; if(best<3) return mode==='wagon'?.7:.8; return 1;
-}
-function travelCostForSegment(R,a,b,mode){ const w=W(), steps=Math.max(2,Math.ceil(unitDist(a,b)/24)), pts=[]; let cost=0; for(let i=0;i<=steps;i++){const t=i/steps,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t,s=analysisSample(R,x,y); const tk=terrainKey(s.terrain); let mult=(TRAVEL_MODES[mode]?.terrain?.[tk]||1); if(mode==='boat'||mode==='sail') mult=(['sea','shallow','lake'].includes(tk)?(TRAVEL_MODES[mode].terrain[tk]||1):(['river'].includes(tk)?(TRAVEL_MODES[mode].terrain.river||.5):.12)); if(['mountain','highmountain'].includes(tk)) mult*=.8; mult*=travelLineBonus(R,x,y,mode); cost+=mult; pts.push({x,y}); } return {mult:cost/(steps+1),pts}; }
-function dijkstraTravel(R,start,end,mode){
-  const w=W(), base=Math.max(6,Math.floor(Math.max(w.mapWidth,w.mapHeight)/180)), cols=Math.ceil(w.mapWidth/base), rows=Math.ceil(w.mapHeight/base); const sx=clamp(Math.floor(start.x/w.extentW*cols),0,cols-1), sy=clamp(Math.floor(start.y/w.extentH*rows),0,rows-1), tx=clamp(Math.floor(end.x/w.extentW*cols),0,cols-1), ty=clamp(Math.floor(end.y/w.extentH*rows),0,rows-1), N=cols*rows;
-  const dist=new Float64Array(N); dist.fill(Infinity); const prev=new Int32Array(N); prev.fill(-1); const used=new Uint8Array(N); const heap=[];
-  const push=(d,i)=>{let k=heap.length;heap.push([d,i]);while(k){const p=(k-1)>>1;if(heap[p][0]<=d)break;heap[k]=heap[p];k=p;}heap[k]=[d,i];};
-  const pop=()=>{const top=heap[0],last=heap.pop();if(heap.length){let k=0;while(true){let c=k*2+1;if(c>=heap.length)break;if(c+1<heap.length&&heap[c+1][0]<heap[c][0])c++;if(heap[c][0]>=last[0])break;heap[k]=heap[c];k=c;}heap[k]=last;}return top;};
-  const si=sy*cols+sx, ti=ty*cols+tx; dist[si]=0; push(0,si);
-  while(heap.length){const [d,i]=pop(); if(d!==dist[i]||used[i])continue; used[i]=1;if(i===ti)break; const x=i%cols,y=Math.floor(i/cols); for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=cols||ny>=rows)continue;const ni=ny*cols+nx;const ux=(x+.5)*base,uy=(y+.5)*base,vx=(nx+.5)*base,vy=(ny+.5)*base;const seg=travelCostForSegment(R,{x:ux,y:uy},{x:vx,y:vy},mode);const nd=d+Math.hypot(vx-ux,vy-uy)*seg.mult;if(nd<dist[ni]){dist[ni]=nd;prev[ni]=i;push(nd,ni);}} }
-  const rev=[]; let cur=ti; while(cur>=0){const x=cur%cols,y=Math.floor(cur/cols);rev.push({x:Math.min(w.extentW-1,(x+.5)*base),y:Math.min(w.extentH-1,(y+.5)*base)}); if(cur===si)break;cur=prev[cur];} rev.reverse(); return {points:rev,gridStep:base,cost:dist[ti]};
-}
-function computeTravelCandidate(start,end,mode,date,subject){ const w=W(),R=resolveState(currentStateId()); const direct=unitDist(start,end)*(w.kmPerUnit||1); const route=dijkstraTravel(R,start,end,mode); const dist=route.points.reduce((s,p,i)=>i?s+unitDist(route.points[i-1],p):0,0)*(w.kmPerUnit||1); const weightedKm=route.cost*(w.kmPerUnit||1); const speed=TRAVEL_MODES[mode]?.speed||5; const hours=Math.max(.1,weightedKm/speed); const cand={id:uid('travel'),createdAt:Date.now(),source:'auto-route',start,end,mode,date:date||w.currentYear,subject:subject||'',directKm:direct,routeKm:dist,weightedKm,hours,days:hours/24,arrivalYear:Number(date||w.currentYear)+hours/(24*365),points:route.points,fromCity:nearestTravelCity(start.x,start.y)?.id||null,toCity:nearestTravelCity(end.x,end.y)?.id||null}; return cand; }
-function renderWorldAnalysisOverlay(ctx,S){ const a=W()?.analysis; if(!a) return; const c=a.candidates?.climate; if(c){const cw=W().extentW/c.cols,ch=W().extentH/c.rows; c.cells.forEach(cell=>{ctx.fillStyle=hexAlpha(climateColor(cell.climate),.28);ctx.fillRect(cell.x*cw,cell.y*ch,cw+.5,ch+.5);});} const r=a.candidates?.rivers; if(r){ctx.save();ctx.strokeStyle='#62b6e8';ctx.lineWidth=2/S;ctx.globalAlpha=.65;r.rivers.forEach(rv=>{ctx.beginPath();rv.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();});ctx.restore();} const t=a.candidates?.travel;if(t&&t.points){ctx.save();ctx.strokeStyle='#ffd35a';ctx.lineWidth=3/S;ctx.setLineDash([8/S,5/S]);ctx.beginPath();t.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.setLineDash([]);t.points.slice(0,1).concat(t.points.slice(-1)).forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,6/S,0,7);ctx.stroke();});ctx.restore();} }
-function openWorldLabModal(tab){
-  const w=W(), a=analysisEnsure(), c=a.candidates?.climate, r=a.candidates?.rivers, t=a.candidates?.travel; tab=tab||'travel';
-  const travelStart=MapView.travelStart, travelEnd=MapView.travelEnd;
-  const cityOpts=w.cities.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  const body=`<div class="tabs"><button class="tab ${tab==='travel'?'active':''}" data-wlab="travel">移動時間</button><button class="tab ${tab==='climate'?'active':''}" data-wlab="climate">気候・バイオーム</button><button class="tab ${tab==='rivers'?'active':''}" data-wlab="rivers">河川・流域</button></div><div id="worldLabBody"></div>`;
-  openModal('世界解析（Phase 1）',body,[{label:'閉じる',onClick:closeModal}]);
-  document.querySelectorAll('[data-wlab]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-wlab]').forEach(x=>x.classList.toggle('active',x===b)); drawWorldLabTab(b.dataset.wlab);}));
-  function drawWorldLabTab(which){ const el=document.getElementById('worldLabBody'); if(which==='travel'){ el.innerHTML=`<div class="formgrid"><label>出発都市<select id="wlFrom"><option value="">地図クリックで指定</option>${cityOpts}</select></label><label>到着都市<select id="wlTo"><option value="">地図クリックで指定</option>${cityOpts}</select></label><label>移動手段<select id="wlMode">${Object.entries(TRAVEL_MODES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select></label><label>出発日<input type="number" id="wlDate" value="${w.currentYear}"></label><label>移動主体<input id="wlSubject" placeholder="主人公・援軍など"></label></div><p class="hint">地図上の「⇢ 移動時間計算」で2点を直接指定できます。道路・鉄道・河川など既存線は今後の経路補正対象として保持し、現在の候補計算では地形・標高を優先します。</p><div id="wlTravelResult">${t?worldLabTravelHtml(t):'<div class="empty">出発・到着を指定して「経路候補を計算」を押してください。</div>'}</div><div class="lp-row wrap"><button class="btn small" id="wlPickBtn">地図で2点を指定</button><button class="btn small primary" id="wlCalcBtn">経路候補を計算</button>${t?'<button class="btn small" id="wlApplyTravel">結果を記録</button>':''}</div>`;
-    document.getElementById('wlFrom').addEventListener('change',()=>{const c=cityById(document.getElementById('wlFrom').value);if(c)MapView.travelStart={x:c.x,y:c.y};}); document.getElementById('wlTo').addEventListener('change',()=>{const c=cityById(document.getElementById('wlTo').value);if(c)MapView.travelEnd={x:c.x,y:c.y};}); document.getElementById('wlPickBtn').onclick=()=>{closeModal();setTool('travel');MapView.travelPickStage=0;toast('地図上を2回クリックしてください（出発→到着）');}; document.getElementById('wlCalcBtn').onclick=()=>{const mode=document.getElementById('wlMode').value,date=document.getElementById('wlDate').value; if(!MapView.travelStart||!MapView.travelEnd){toast('出発地点と到着地点を指定してください','err');return;} let cc=null; mutate('移動経路候補を生成',()=>{cc=computeTravelCandidate(MapView.travelStart,MapView.travelEnd,mode,date,document.getElementById('wlSubject').value); analysisEnsure().candidates.travel=cc;}); renderMap(); drawWorldLabTab('travel');}; const ap=document.getElementById('wlApplyTravel'); if(ap)ap.onclick=()=>{const cc=analysisEnsure().candidates.travel;if(!cc)return;mutate('移動計算結果を記録',()=>{analysisEnsure().travelHistory.push(deepClone(cc));});closeModal();toast('移動計算結果を世界データに記録しました');};
-  } else if(which==='climate'){el.innerHTML=`<div class="formgrid"><label>赤道Y<input type="number" id="clEq" value="${a.settings.climate?.equatorY??w.mapHeight/2}"></label><label>極点Y<input type="number" id="clPole" value="${a.settings.climate?.poleY??0}"></label><label>海面判定値<input type="number" id="clSea" value="${a.settings.climate?.seaLevel??1}"></label></div><p class="hint">既存の地形・標高を読み、緯度・標高・水域・地形から候補気候を粗いグリッドで推定します。山地は降水増加、風下側の乾燥は候補推定として扱います。既存の地形・バイオームは変更しません。</p><div>${c?`候補生成済み：${c.cols}×${c.rows} / ${c.createdAt?new Date(c.createdAt).toLocaleString('ja-JP'):''}`:'候補はまだありません'}</div><div class="lp-row wrap"><button class="btn small primary" id="clGen">推定候補を生成</button>${c?'<button class="btn small" id="clApply">表示レイヤーとして保存</button>':''}</div>`; document.getElementById('clGen').onclick=()=>{mutate('気候・バイオーム候補を生成',()=>{const aa=analysisEnsure();aa.settings.climate={equatorY:Number(document.getElementById('clEq').value),poleY:Number(document.getElementById('clPole').value),seaLevel:Number(document.getElementById('clSea').value)};generateClimateCandidate();});renderMap();drawWorldLabTab('climate');}; const ap=document.getElementById('clApply');if(ap)ap.onclick=()=>{const cc=analysisEnsure().candidates.climate;if(!cc)return;mutate('気候推定レイヤーを保存',()=>{analysisEnsure().candidates.climate=cc;});closeModal();toast('推定レイヤーを保存しました（既存地形は変更していません）');};
-  } else {el.innerHTML=`<p class="hint">既存の標高・地形から、水が高地から低地へ流れる経路を粗いグリッドで候補生成します。生成物は河川オブジェクトとして自動確定せず、プレビュー候補です。</p><div>${r?`候補河川：${r.rivers.length}本 / ${r.createdAt?new Date(r.createdAt).toLocaleString('ja-JP'):''}`:'候補はまだありません'}</div><div class="lp-row wrap"><button class="btn small primary" id="rvGen">河川候補を生成</button>${r?'<button class="btn small" id="rvApply">候補を河川として追加</button>':''}</div>`;document.getElementById('rvGen').onclick=()=>{mutate('河川候補を生成',()=>generateRiverCandidate());renderMap();drawWorldLabTab('rivers');};const ap=document.getElementById('rvApply');if(ap)ap.onclick=()=>{const cc=analysisEnsure().candidates.rivers;if(!cc)return;const S=curState();mutate('自動生成河川を適用',()=>{cc.rivers.forEach(rv=>vecPut('lines',{id:uid('line'),kind:'river',points:rv.points,createdAt:Date.now(),updatedAt:Date.now(),source:'auto-river-candidate',relatedCandidate:cc.id}));});closeModal();renderMap();toast('河川候補を適用しました。Undoで適用前に戻せます');};}
-  }
-  drawWorldLabTab(tab);
-}
-function worldLabTravelHtml(t){return `<div class="card" style="margin-top:8px"><b>計算結果（候補）</b><div class="kv"><span>直線距離</span><b>${fmtNum(t.directKm)} km</b><span>経路距離</span><b>${fmtNum(t.routeKm)} km</b><span>所要時間</span><b>${fmtNum(t.days)} 日</b><span>推定到着</span><b>${fmtNum(t.arrivalYear)}年</b><span>出発都市</span><b>${esc(cityById(t.fromCity)?.name||'任意地点')}</b><span>到着都市</span><b>${esc(cityById(t.toCity)?.name||'任意地点')}</b></div></div>`;}
-
-
-/* ---------- Phase 3: 経済・文化統合 ---------- */
-const ECON_RESOURCE_TYPES=['鉄','金','銀','石炭','石油','小麦','米','馬','香辛料','木材','塩','宝石','魚','綿花','茶','絹'];
-function economyEnsure(){const w=W();if(!w.economy||typeof w.economy!=='object')w.economy={};const e=w.economy;if(!Array.isArray(e.resources))e.resources=[];if(!Array.isArray(e.tradeRoutes))e.tradeRoutes=[];if(!Array.isArray(e.influences))e.influences=[];if(!Array.isArray(e.namingCultures))e.namingCultures=[];if(!Array.isArray(e.nameCandidates))e.nameCandidates=[];return e;}
-function economyEntityName(type,id){if(!id)return '';const w=W();const a=type==='city'?w.cities:type==='nation'?w.nations:type==='region'?w.regions:[];return a.find(x=>x.id===id)?.name||'';}
-function drawEconomyCultureOverlay(ctx,S){const e=W()?.economy;if(!e)return;ctx.save();ctx.lineJoin='round';ctx.lineCap='round';(e.tradeRoutes||[]).forEach(r=>{if(!r.points||r.points.length<2)return;ctx.strokeStyle=r.mode==='sea'?'#4aa9d8':r.mode==='river'?'#55a875':'#d39b4a';ctx.lineWidth=(2+Math.min(5,Number(r.importance)||1))/S;ctx.globalAlpha=.72;ctx.beginPath();r.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();});(e.resources||[]).forEach(r=>{ctx.globalAlpha=.95;ctx.fillStyle='#f3d36a';ctx.strokeStyle='#3b2f1d';ctx.lineWidth=1/S;ctx.beginPath();ctx.arc(r.x,r.y,5/S,0,Math.PI*2);ctx.fill();ctx.stroke();});ctx.restore();}
-function economyNameCandidatesHtml(){const e=economyEnsure();return e.nameCandidates.slice(-8).reverse().map(c=>`<div class="card" style="margin:5px 0"><b>${esc(c.name)}</b><span class="muted"> ${esc(c.targetType||'')} / ${esc(c.cultureName||'')}</span><div class="lp-row"><button class="btn small" data-namefav="${c.id}">☆ お気に入り</button><button class="btn small primary" data-nameapply="${c.id}">既存データへ適用</button></div></div>`).join('')||'<div class="empty">候補はまだありません</div>';}
-function generateCultureName(c){const vowels=(c.vowels||'aeiou').replace(/\s/g,'').split('').filter(Boolean),cons=(c.consonants||'krntslm').replace(/\s/g,'').split('').filter(Boolean),suffixes=(c.suffixes||'a,ia,on').split(',').map(x=>x.trim()).filter(Boolean),prefixes=(c.prefixes||'').split(',').map(x=>x.trim()).filter(Boolean),patterns=(c.patterns||'CV-CV,CVC-CV,CV-CVC').split(',').map(x=>x.trim()).filter(Boolean);let pat=patterns[Math.floor(Math.random()*patterns.length)]||'CV-CV';let out='';for(const ch of pat){if(ch==='C')out+=cons[Math.floor(Math.random()*cons.length)];else if(ch==='V')out+=vowels[Math.floor(Math.random()*vowels.length)];else out+=ch;}return (prefixes.length?prefixes[Math.floor(Math.random()*prefixes.length)]:'')+out+(suffixes.length?suffixes[Math.floor(Math.random()*suffixes.length)]:'');}
-function openEconomyCultureModal(tab){const w=W(),e=economyEnsure();tab=tab||'resources';const body=`<div class="tabs"><button class="tab ${tab==='resources'?'active':''}" data-econ="resources">資源</button><button class="tab ${tab==='trade'?'active':''}" data-econ="trade">交易路</button><button class="tab ${tab==='influence'?'active':''}" data-econ="influence">影響圏</button><button class="tab ${tab==='names'?'active':''}" data-econ="names">地名生成</button></div><div id="econBody"></div>`;openWideModal('経済・文化統合',body,[{label:'閉じる',onClick:closeModal}]);document.querySelectorAll('[data-econ]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-econ]').forEach(x=>x.classList.toggle('active',x===b));draw(b.dataset.econ);});function draw(which){const el=document.getElementById('econBody');if(which==='resources'){el.innerHTML=`<div class="formgrid"><label>資源<select id="resKind">${ECON_RESOURCE_TYPES.map(x=>`<option>${x}</option>`).join('')}</select></label><label>産地都市<select id="resCity"><option value="">任意地点</option>${w.cities.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label><label>産出量<input type="number" id="resQty" value="100"></label><label>国家<select id="resNation"><option value="">未設定</option>${w.nations.map(n=>`<option value="${n.id}">${esc(n.name)}</option>`).join('')}</select></label></div><p class="hint">資源は既存都市・国家へ関連付けて登録できます。自動生成では既存データを変更しません。</p><div class="lp-row"><button class="btn small primary" id="resAdd">資源ノードを追加</button></div><div>${e.resources.slice(-10).reverse().map(r=>`<div class="card"><b>${esc(r.kind)}</b> <span class="muted">${esc(economyEntityName('city',r.cityId)||'任意地点')} / ${r.quantity}</span></div>`).join('')||'<div class="empty">登録された資源はありません</div>'}</div>`;document.getElementById('resAdd').onclick=()=>{const city=cityById(document.getElementById('resCity').value);const p=city?{x:city.x,y:city.y}:{x:W().extentW/2,y:W().extentH/2};mutate('資源ノードを追加',()=>e.resources.push({id:uid('res'),kind:document.getElementById('resKind').value,cityId:city?.id||null,nationId:document.getElementById('resNation').value||null,x:p.x,y:p.y,quantity:Number(document.getElementById('resQty').value)||0,createdAt:Date.now(),updatedAt:Date.now(),source:'manual'}));renderMap();draw(which);};}
-else if(which==='trade'){el.innerHTML=`<div class="formgrid"><label>出発都市<select id="trFrom">${w.cities.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label><label>到着都市<select id="trTo">${w.cities.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label><label>交易方式<select id="trMode"><option value="land">陸路</option><option value="sea">海路</option><option value="river">河川交易</option><option value="caravan">キャラバン路</option></select></label><label>重要度<input type="number" id="trImp" value="3" min="1" max="10"></label></div><div class="lp-row"><button class="btn small primary" id="trAdd">交易路候補を作成</button></div><p class="hint">候補を作成した時点では既存都市や資源は変更しません。都市間の直線経路をプレビューし、確認後に交易路データへ登録します。</p>${e.tradeRoutes.slice(-10).reverse().map(r=>`<div class="card"><b>${esc(economyEntityName('city',r.fromCityId))} → ${esc(economyEntityName('city',r.toCityId))}</b><span class="muted"> ${esc(r.mode)} / 重要度 ${r.importance}</span></div>`).join('')}`;document.getElementById('trAdd').onclick=()=>{const a=cityById(document.getElementById('trFrom').value),b=cityById(document.getElementById('trTo').value);if(!a||!b||a.id===b.id){toast('異なる2都市を選択してください','err');return;}mutate('交易路を登録',()=>e.tradeRoutes.push({id:uid('trade'),fromCityId:a.id,toCityId:b.id,mode:document.getElementById('trMode').value,importance:Number(document.getElementById('trImp').value)||1,points:[{x:a.x,y:a.y},{x:b.x,y:b.y}],createdAt:Date.now(),updatedAt:Date.now(),source:'manual'}));renderMap();draw(which);};}
-else if(which==='influence'){el.innerHTML=`<p class="hint">交易路・資源・都市を根拠に、経済・文化・言語・宗教の「影響候補」を記録します。既存の文化・言語・宗教データは自動変更しません。</p><div class="formgrid"><label>種類<select id="infKind"><option>経済圏</option><option>文化伝播圏</option><option>言語伝播圏</option><option>宗教伝播圏</option></select></label><label>名称<input id="infName" placeholder="例：北方交易圏"></label><label>中心都市<select id="infCity"><option value="">未設定</option>${w.cities.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label><label>影響半径<input type="number" id="infRadius" value="80"></label></div><div class="lp-row"><button class="btn small primary" id="infAdd">候補を記録</button></div>${e.influences.slice(-10).reverse().map(i=>`<div class="card"><b>${esc(i.name)}</b> <span class="muted">${esc(i.kind)} / 半径 ${i.radius}</span></div>`).join('')}`;document.getElementById('infAdd').onclick=()=>{const c=cityById(document.getElementById('infCity').value);mutate('影響圏候補を記録',()=>e.influences.push({id:uid('inf'),kind:document.getElementById('infKind').value,name:document.getElementById('infName').value.trim()||'無名の影響圏',cityId:c?.id||null,x:c?.x??w.extentW/2,y:c?.y??w.extentH/2,radius:Number(document.getElementById('infRadius').value)||80,status:'candidate',createdAt:Date.now(),updatedAt:Date.now()}));draw(which);};}
-else{el.innerHTML=`<div class="formgrid"><label>対象<select id="nmType"><option value="city">都市</option><option value="region">地域</option><option value="nation">国家</option></select></label><label>文化名<input id="nmCulture" value="北方語族"></label><label>母音<input id="nmV" value="a e i o u"></label><label>子音<input id="nmC" value="k r n t s m l"></label><label>音節パターン<input id="nmP" value="CV-CV,CVC-CV,CV-CVC"></label><label>接頭辞<input id="nmPre" placeholder="例：Al,Ka"></label><label>接尾辞<input id="nmSuf" value="a,ia,on"></label></div><div class="lp-row"><button class="btn small primary" id="nmGen">候補を生成</button></div><div id="nameCandidates">${economyNameCandidatesHtml()}</div>`;document.getElementById('nmGen').onclick=()=>{const c={id:uid('culture'),name:document.getElementById('nmCulture').value||'無名文化',vowels:document.getElementById('nmV').value,consonants:document.getElementById('nmC').value,patterns:document.getElementById('nmP').value,prefixes:document.getElementById('nmPre').value,suffixes:document.getElementById('nmSuf').value};const name=generateCultureName(c);mutate('地名候補を生成',()=>{e.nameCandidates.push({id:uid('namecand'),name,cultureName:c.name,targetType:document.getElementById('nmType').value,culture:c,createdAt:Date.now(),updatedAt:Date.now(),source:'generated'});});draw(which);};document.querySelectorAll('[data-nameapply]').forEach(b=>b.onclick=()=>{const cand=e.nameCandidates.find(x=>x.id===b.dataset.nameapply);if(!cand)return;const arr=cand.targetType==='city'?w.cities:cand.targetType==='nation'?w.nations:w.regions;const opts=arr.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');openModal('候補名を適用',`<p>既存データを明示的に選択して名前を変更します。</p><select id="nmTarget">${opts}</select>`,[{label:'キャンセル',onClick:closeModal},{label:'適用',cls:'primary',onClick:()=>{const obj=arr.find(x=>x.id===document.getElementById('nmTarget').value);if(!obj){toast('対象がありません','err');return;}mutate('生成地名を適用: '+cand.name,()=>{obj.name=cand.name;});closeModal();renderMap();}}]);});}}
-draw(tab);}
-
-
-/* ---------- Phase 4: 独自暦・月齢・天象 ---------- */
-function calendarEnsure(){
-  const w=W(); if(!w)return null; normalizeWorld(w); return w.calendar;
-}
-function calendarIsLeap(year){const c=calendarEnsure(); if(!c||!c.leap.enabled)return false; const n=year-Number(c.leap.offset||0); return n%c.leap.every===0;}
-function calendarMonthLengths(year){const c=calendarEnsure(); const a=c.monthLengths.slice(); if(calendarIsLeap(year)){const i=Math.min(a.length-1,Math.max(0,c.leap.month-1)); a[i]+=1;} return a;}
-function calendarDateToDay(year,month,day){const w=W(),c=calendarEnsure(); if(!c)return 0; let total=0; const y=Number(year)||0; const from=Math.min(c.epochYear,y),to=Math.max(c.epochYear,y); for(let yy=from;yy<to;yy++) total+=(yy>=c.epochYear?1:-1)*(c.yearDays+(calendarIsLeap(yy)?1:0)); if(y<c.epochYear){total=0;for(let yy=y;yy<c.epochYear;yy++) total-=c.yearDays+(calendarIsLeap(yy)?1:0);} const lens=calendarMonthLengths(y); const m=Math.min(lens.length,Math.max(1,Number(month)||1)); for(let i=0;i<m-1;i++) total+=lens[i]; return total+Math.max(1,Math.min(lens[m-1],Number(day)||1))-1;}
-function calendarDayToDate(day){const c=calendarEnsure(); if(!c)return {year:0,month:1,day:1}; let y=c.epochYear, d=Math.floor(day); if(d>=0){while(d>=(c.yearDays+(calendarIsLeap(y)?1:0))){d-=c.yearDays+(calendarIsLeap(y)?1:0);y++;}}else{while(d<0){y--;d+=c.yearDays+(calendarIsLeap(y)?1:0);}} const lens=calendarMonthLengths(y); let m=1; while(m<=lens.length && d>=lens[m-1]){d-=lens[m-1];m++;} return {year:y,month:m,day:d+1};}
-function calendarFormatDate(date){const c=calendarEnsure(); if(!c)return ''; return `${date.year}${c.eraName||'年'} ${c.monthNames[date.month-1]||date.month+'月'} ${date.day}日`;}
-function moonPhaseAt(moon,date){const d=calendarDateToDay(date.year,date.month,date.day); const cycle=Number(moon.cycle)||29.530588; let p=((d+(Number(moon.phaseOffset)||0))%cycle+cycle)%cycle; return {age:p,phase:p/cycle,illumination:(1-Math.cos(p/cycle*2*Math.PI))/2};}
-function moonPhaseName(frac){if(frac<.0625||frac>=.9375)return '新月';if(frac<.1875)return '三日月';if(frac<.3125)return '上弦';if(frac<.4375)return '十三夜';if(frac<.5625)return '満月';if(frac<.6875)return '寝待月';if(frac<.8125)return '下弦';return '有明月';}
-function astronomyCandidates(year){const c=calendarEnsure(); if(!c)return []; const lens=calendarMonthLengths(year); const total=lens.reduce((a,b)=>a+b,0),out=[]; (c.moons||[]).forEach(m=>{const phase0=moonPhaseAt(m,{year,month:1,day:1}).age; for(const target of [0,.25,.5,.75]){let delta=((target*(Number(m.cycle)||29.530588)-phase0)); delta=((delta%(Number(m.cycle)||29.530588))+(Number(m.cycle)||29.530588))%(Number(m.cycle)||29.530588); if(delta<total){const d=calendarDayToDate(calendarDateToDay(year,1,1)+Math.round(delta));out.push({type:'月相',name:(m.name||'月')+' '+moonPhaseName(target),date:d,moonId:m.id,source:'calculated'});}}}); return out.sort((a,b)=>calendarDateToDay(a.date.year,a.date.month,a.date.day)-calendarDateToDay(b.date.year,b.date.month,b.date.day));}
-function calendarDateInputs(prefix,d){const c=calendarEnsure();return `<div class=\"formgrid\"><label>年<input type=\"number\" id=\"${prefix}Year\" value=\"${d.year}\"></label><label>月<select id=\"${prefix}Month\">${c.monthNames.map((n,i)=>`<option value=\"${i+1}\" ${d.month===i+1?'selected':''}>${esc(n)}</option>`).join('')}</select></label><label>日<input type=\"number\" id=\"${prefix}Day\" value=\"${d.day}\"></label></div>`;}
-function openCalendarAstronomyModal(tab){
- const w=W(),c=calendarEnsure(); tab=tab||'calendar'; const today=calendarDayToDate(calendarDateToDay(w.currentYear,1,1));
- const body=`<div class=\"tabs\"><button class=\"tab ${tab==='calendar'?'active':''}\" data-cal=\"calendar\">暦設定</button><button class=\"tab ${tab==='date'?'active':''}\" data-cal=\"date\">日付・月齢</button><button class=\"tab ${tab==='astro'?'active':''}\" data-cal=\"astro\">天象</button></div><div id=\"calBody\"></div>`;
- openWideModal('暦・月齢・天象',body,[{label:'閉じる',onClick:closeModal}]);
- document.querySelectorAll('[data-cal]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cal]').forEach(x=>x.classList.toggle('active',x===b));draw(b.dataset.cal);});
- function draw(which){const el=document.getElementById('calBody');
-  if(which==='calendar'){
-   el.innerHTML=`<p class=\"hint\">世界ごとの暦を設定します。既存の年・出来事データは保持し、月日表示の基準として利用します。</p><div class=\"formgrid\"><label>1年の日数<input type=\"number\" id=\"calYearDays\" min=1 value=\"${c.yearDays}\"></label><label>1年の月数<input type=\"number\" id=\"calMonths\" min=1 value=\"${c.months}\"></label><label>週の日数<input type=\"number\" id=\"calWeekDays\" min=1 value=\"${c.weekDays}\"></label><label>紀元<input type=\"number\" id=\"calEpoch\" value=\"${c.epochYear}\"></label><label>年号名<input id=\"calEra\" value=\"${esc(c.eraName)}\" placeholder=\"例：帝国暦\"></label></div><div class=\"panel\"><h3>月名・月日数</h3><div id=\"calMonthsList\"></div></div><div class=\"panel\"><h3>閏年</h3><label><input type=\"checkbox\" id=\"calLeap\" ${c.leap.enabled?'checked':''}> 閏年を使用</label><div class=\"formgrid\"><label>何年ごと<input type=\"number\" id=\"calLeapEvery\" value=\"${c.leap.every}\"></label><label>追加する月<input type=\"number\" id=\"calLeapMonth\" value=\"${c.leap.month}\"></label><label>追加日<input type=\"number\" id=\"calLeapDay\" value=\"${c.leap.day}\"></label></div></div><div class=\"lp-row\"><button class=\"btn small primary\" id=\"calSave\">暦設定を保存</button></div>`;
-   const renderMonths=()=>{const n=Math.max(1,Number(document.getElementById('calMonths').value)||1);const old=c.monthLengths;document.getElementById('calMonthsList').innerHTML=Array.from({length:n},(_,i)=>`<div class=\"formgrid\"><label>${i+1}月の名称<input data-cm-name=\"${i}\" value=\"${esc(c.monthNames[i]||String(i+1)+'月')}\"></label><label>日数<input type=\"number\" min=\"1\" data-cm-len=\"${i}\" value=\"${old[i]||Math.max(1,Math.floor((Number(document.getElementById('calYearDays').value)||360)/n))}\"></label></div>`).join('');}; renderMonths(); document.getElementById('calMonths').onchange=renderMonths;
-   document.getElementById('calSave').onclick=()=>{const n=Math.max(1,Number(document.getElementById('calMonths').value)||1), names=[...document.querySelectorAll('[data-cm-name]')].map(x=>x.value.trim()||'月'), lens=[...document.querySelectorAll('[data-cm-len]')].map(x=>Math.max(1,Number(x.value)||1));const oldC=deepClone(c);mutate('独自暦設定を変更',()=>{c.yearDays=lens.reduce((a,b)=>a+b,0);c.months=n;c.monthLengths=lens;c.monthNames=names;c.weekDays=Math.max(1,Number(document.getElementById('calWeekDays').value)||7);c.weekdayNames=Array.from({length:c.weekDays},(_,i)=>c.weekdayNames[i]||'曜'+(i+1));c.epochYear=Number(document.getElementById('calEpoch').value)||w.startYear;c.eraName=document.getElementById('calEra').value.trim();c.leap={enabled:document.getElementById('calLeap').checked,every:Math.max(1,Number(document.getElementById('calLeapEvery').value)||4),month:Math.min(n,Math.max(1,Number(document.getElementById('calLeapMonth').value)||n)),day:Math.max(1,Number(document.getElementById('calLeapDay').value)||lens[n-1])};});closeModal();refreshTopbarYear();fullRerender();};
-  } else if(which==='date'){
-   el.innerHTML=`<p class=\"hint\">世界固有の日付から月齢を計算します。計算結果は表示のみで、既存データを変更しません。</p>${calendarDateInputs('md',today)}<div class=\"lp-row\"><button class=\"btn small primary\" id=\"mdCalc\">月齢を計算</button></div><div id=\"mdResult\"></div>`;
-   document.getElementById('mdCalc').onclick=()=>{const d={year:Number(document.getElementById('mdYear').value)||w.currentYear,month:Number(document.getElementById('mdMonth').value)||1,day:Number(document.getElementById('mdDay').value)||1};document.getElementById('mdResult').innerHTML=(c.moons||[]).map(m=>{const ph=moonPhaseAt(m,d);return `<div class=\"card\"><b>${esc(m.name)}</b>：${esc(moonPhaseName(ph.phase))}<div class=\"muted\">月齢 ${ph.age.toFixed(2)} / 照度 ${(ph.illumination*100).toFixed(1)}%</div></div>`;}).join('');};
-   } else {
-    const cand=astronomyCandidates(w.currentYear); el.innerHTML=`<p class=\"hint\">新月・上弦・満月・下弦などを世界暦上の日付へ変換した候補です。採用した天象だけを記録できます。</p><div class=\"formgrid\"><label>対象年<input type=\"number\" id=\"astroYear\" value=\"${w.currentYear}\"></label><label>月<select id=\"astroMoon\">${c.moons.map(m=>`<option value=\"${m.id}\">${esc(m.name)}</option>`).join('')}</select></label></div><div class=\"lp-row\"><button class=\"btn small primary\" id=\"astroCalc\">候補を再計算</button><button class=\"btn small\" id=\"astroAddMoon\">月を追加</button></div><div id=\"astroList\"></div>`;
-    const render=()=>{const year=Number(document.getElementById('astroYear').value)||w.currentYear;const list=astronomyCandidates(year).filter(x=>!document.getElementById('astroMoon').value||x.moonId===document.getElementById('astroMoon').value);document.getElementById('astroList').innerHTML=list.map(x=>`<div class=\"card\"><b>${esc(x.name)}</b><span class=\"muted\"> ${esc(calendarFormatDate(x.date))}</span><div class=\"lp-row\"><button class=\"btn small primary\" data-astro-save=\"${esc(JSON.stringify(x).replace(/\"/g,'&quot;'))}\">天象イベントとして記録</button></div></div>`).join('')||'<div class="empty">候補がありません</div>';document.querySelectorAll('[data-astro-save]').forEach(b=>b.onclick=()=>{let x;try{x=JSON.parse(b.dataset.astroSave)}catch(e){return;}mutate('天象イベントを記録: '+x.name,()=>c.astronomy.events.push({id:uid('astro'),type:x.type,name:x.name,year:x.date.year,month:x.date.month,day:x.date.day,moonId:x.moonId,source:'calculated',createdAt:Date.now(),updatedAt:Date.now()}));render();});};
-    document.getElementById('astroCalc').onclick=render; document.getElementById('astroAddMoon').onclick=()=>openMoonAddModal(()=>draw('astro')); render();
-   }
- }
- draw(tab);
-}
-function openMoonAddModal(done){const c=calendarEnsure();openModal('月を追加',`<div class="formgrid"><label>月名<input id="moonName" value="月2"></label><label>周期(日)<input type="number" id="moonCycle" step="0.001" value="29.530588"></label><label>位相オフセット<input type="number" id="moonOffset" step="0.1" value="0"></label></div>`,[{label:'キャンセル',onClick:closeModal},{label:'追加',cls:'primary',onClick:()=>{mutate('月を追加',()=>c.moons.push({id:uid('moon'),name:document.getElementById('moonName').value.trim()||'新しい月',cycle:Math.max(.1,Number(document.getElementById('moonCycle').value)||29.530588),phaseOffset:Number(document.getElementById('moonOffset').value)||0,createdAt:Date.now(),updatedAt:Date.now()}));closeModal();done&&done();}}]);}
-
 /* ---------- 入力の配線 ---------- */
 function wireMapCanvas(){
   const wrap=document.getElementById('mapcanvaswrap');
@@ -4879,7 +4659,7 @@ function wireMapCanvas(){
     const P=screenToPx(p.x,p.y); const px=Math.floor(P.x), py=Math.floor(P.y);
     const w=W();
     if(tool==='select'){ MapView.drag={type:'selpan', sx:p.x, sy:p.y, ox:MapView.offX, oy:MapView.offY, moved:false}; return; }
-    const needsEdit = BRUSH_TOOLS.includes(tool)||tool==='fill'||tool==='paste'||LINE_TOOLS.includes(tool)||tool==='admin'||tool==='vertex'||tool==='travel'||tool==='city-place'||tool==='label'||tool==='custom-point'||tool==='refimg';
+    const needsEdit = BRUSH_TOOLS.includes(tool)||tool==='fill'||tool==='paste'||LINE_TOOLS.includes(tool)||tool==='admin'||tool==='vertex'||tool==='city-place'||tool==='label'||tool==='custom-point'||tool==='refimg';
     if(needsEdit && !mapEditAllowed()){ toast('現在の権限(「'+roleLabel(currentRole)+'」)では地図を編集できません','err'); return; }
     if(BRUSH_TOOLS.includes(tool)){
       if(e.altKey && tool!=='eraser'){ pickAt(px,py); return; }
@@ -4900,11 +4680,6 @@ function wireMapCanvas(){
       else if(sp.closing){ finishDraft(); return; }
       else { const last=MapView.draft.pts[MapView.draft.pts.length-1]; if(unitDist(last,sp)*MapView.scale>=3) MapView.draft.pts.push({x:sp.x,y:sp.y}); }
       renderOverlayOnly(); return;
-    }
-    if(tool==='travel'){
-      if(MapView.travelPickStage===0){ MapView.travelStart={x:round2(screenToUnit(p.x,p.y).x),y:round2(screenToUnit(p.x,p.y).y)}; MapView.travelPickStage=1; toast('出発地点を設定しました。到着地点をクリックしてください'); renderMap(); return; }
-      MapView.travelEnd={x:round2(screenToUnit(p.x,p.y).x),y:round2(screenToUnit(p.x,p.y).y)}; MapView.travelPickStage=0;
-      openWorldLabModal('travel'); return;
     }
     if(tool==='vertex'){
       if(MapView.lineDeleteMode){
@@ -5178,65 +4953,6 @@ function renderMapRightPanel(){
 
 /* ---------- 年代スライダー / タイムラプス ---------- */
 const TL = {playing:false, raf:0, last:0, yf:0, acc:0, from:null, to:null, loop:false, mode:'years'};
-function openTimelapseExportModal(){
-  const w=W(); if(!w) return;
-  const seq=lineSequence(w,w.mainLineId);
-  const body=`<div class="formgrid">
-    <div><label>開始年</label><input type="number" id="tlExpFrom" value="${w.startYear}"></div>
-    <div><label>終了年</label><input type="number" id="tlExpTo" value="${w.endYear}"></div>
-    <div><label>再生方式</label><select id="tlExpMode"><option value="years">指定間隔で年代を進める</option><option value="states">地図状態を順番に出力</option></select></div>
-    <div><label>年代ステップ</label><select id="tlExpStep"><option value="1">1年</option><option value="5">5年</option><option value="10" selected>10年</option><option value="25">25年</option><option value="50">50年</option><option value="100">100年</option></select></div>
-    <div><label>フレームレート</label><select id="tlExpFps"><option value="8">8 fps</option><option value="12" selected>12 fps</option><option value="15">15 fps</option><option value="24">24 fps</option><option value="30">30 fps</option></select></div>
-    <div><label>タイトル</label><input id="tlExpTitle" value="${esc(w.name)} - 歴史タイムラプス"></div>
-    <div class="full"><div class="helpbox">地図キャンバスとオーバーレイを合成してWebM動画として出力します。既存データは変更せず、出力中だけ年代を移動して終了時に元の年代へ戻します。</div></div>
-    <div class="full"><div id="tlExpStatus" class="hint">${seq.length}個の地図状態を検出しています。</div></div>
-  </div>`;
-  openModal('歴史タイムラプス出力',body,[
-    {label:'キャンセル',onClick:closeModal},
-    {label:'WebMを書き出す',cls:'primary',onClick:()=>startTimelapseExport()}
-  ]);
-}
-function sleepMs(ms){ return new Promise(r=>setTimeout(r,ms)); }
-async function startTimelapseExport(){
-  const w=W(); if(!w) return;
-  const from=Number(document.getElementById('tlExpFrom').value), to=Number(document.getElementById('tlExpTo').value);
-  const mode=document.getElementById('tlExpMode').value, step=Math.max(1,Number(document.getElementById('tlExpStep').value)||10), fps=Math.max(1,Number(document.getElementById('tlExpFps').value)||12);
-  const title=document.getElementById('tlExpTitle').value.trim()||w.name+' - 歴史タイムラプス';
-  if(!Number.isFinite(from)||!Number.isFinite(to)||to<=from){ toast('終了年は開始年より後にしてください','err'); return; }
-  if(typeof MediaRecorder==='undefined'){ toast('このブラウザは動画出力(MediaRecorder)に対応していません','err'); return; }
-  const src=document.getElementById('mapcanvas'), ov=document.getElementById('overlaycanvas');
-  if(!src||!src.width||!src.height){ toast('地図を表示してから出力してください','err'); return; }
-  const oldYear=w.currentYear, oldPin=MapView.pinnedStateId, oldPlaying=TL.playing;
-  stopTimelapse(); MapView.pinnedStateId=null;
-  const out=document.createElement('canvas'); out.width=src.width; out.height=src.height; const ctx=out.getContext('2d');
-  const stream=out.captureStream(fps); let mime='video/webm;codecs=vp9'; if(!MediaRecorder.isTypeSupported(mime)) mime='video/webm';
-  const chunks=[]; const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:5000000});
-  const status=document.getElementById('tlExpStatus');
-  let stopped=false;
-  const stopPromise=new Promise(resolve=>rec.onstop=resolve);
-  rec.start();
-  try{
-    let frames=[];
-    if(mode==='states') frames=lineSequence(w,w.mainLineId).filter(s=>s.year>=from&&s.year<=to).map(s=>s.year);
-    else { for(let y=from;y<=to;y+=step) frames.push(y); if(frames[frames.length-1]!==to) frames.push(to); }
-    if(!frames.length) throw new Error('出力対象の年代がありません');
-    for(let i=0;i<frames.length;i++){
-      const y=frames[i]; setCurrentYear(y,{quiet:true});
-      await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
-      ctx.clearRect(0,0,out.width,out.height); ctx.drawImage(src,0,0); if(ov) ctx.drawImage(ov,0,0);
-      ctx.save(); ctx.fillStyle='rgba(0,0,0,.58)'; ctx.fillRect(18,out.height-62,Math.min(out.width-36,620),44); ctx.fillStyle='#fff'; ctx.font='bold 22px sans-serif'; ctx.fillText(title,32,out.height-36); ctx.font='16px sans-serif'; ctx.fillText(yearLabel(y,w),Math.max(32,out.width-180),out.height-36); ctx.restore();
-      if(status) status.textContent=`出力中… ${i+1}/${frames.length} (${yearLabel(y,w)})`;
-      await sleepMs(1000/fps);
-    }
-    rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
-    rec.stop(); await stopPromise;
-    const blob=new Blob(chunks,{type:mime}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=(title.replace(/[\\/:*?"<>|]/g,'_')||'history_timelapse')+'.webm'; a.textContent='⬇ WebM動画を保存'; a.className='btn primary'; a.style.display='inline-block';
-    if(status){ status.innerHTML='出力完了。下のボタンから動画を保存できます。'; status.appendChild(document.createElement('br')); status.appendChild(a); }
-    toast('歴史タイムラプスの出力が完了しました','ok');
-  }catch(e){ try{if(rec.state!=='inactive') rec.stop();}catch(_){} toast('タイムラプス出力に失敗しました: '+(e.message||e),'err'); if(status) status.textContent='出力に失敗しました。'; }
-  finally{ setCurrentYear(oldYear,{quiet:true}); MapView.pinnedStateId=oldPin; if(oldPlaying) startTimelapse(false); renderMap(); syncTimelineControls(); }
-}
-
 function wireMapTimeline(){
   const range=document.getElementById('tlRange');
   range.addEventListener('input',()=>{ stopTimelapse(); setCurrentYear(Number(range.value)); });
@@ -5246,7 +4962,6 @@ function wireMapTimeline(){
   document.getElementById('tlNextStateBtn').addEventListener('click',()=>{ stopTimelapse(); jumpState(1); });
   document.getElementById('tlPlayBtn').addEventListener('click',()=> TL.playing?stopTimelapse():startTimelapse(false));
   document.getElementById('tlRangePlay').addEventListener('click',()=> startTimelapse(true));
-  document.getElementById('tlExportBtn').addEventListener('click',openTimelapseExportModal);
   document.getElementById('tlLineSel').addEventListener('change',(e)=>{ mutate('メイン世界線(地図)を変更', ()=>{ W().mainLineId=e.target.value; }); MapView.pinnedStateId=null; renderMap(); renderMapRightPanel(); syncTimelineControls(); });
   document.getElementById('tlMode').addEventListener('change',(e)=>{ TL.mode=e.target.value; });
   document.getElementById('tlLoop').addEventListener('change',(e)=>{ TL.loop=e.target.checked; });
@@ -6341,56 +6056,6 @@ function buildTutorialCategories(){
         { title:'検索', desc:'画面上部の🔍(Ctrl+K)から、国家・地域・都市・人物・組織・戦争・条約・出来事を横断的に検索できます。', target:tutById('searchBtn') },
       ]
     },
-    { id:'worldanalysis', label:'世界解析', icon:'🧭',
-      desc:'既存の地図データを使った移動時間・気候・河川/流域の候補計算を学びます。計算結果は確認してから記録します。',
-      steps:[
-        { title:'世界解析を開く', desc:'地図画面上部の「🧭 世界解析」から、既存の地形・標高・道路・河川・都市などを利用した世界解析を開けます。', target:tutById('worldLabBtn'), view:'map', action:{type:'click', sel:'#worldLabBtn'}, note:'「🧭 世界解析」をクリックしてください' },
-        { title:'移動時間を計算する', desc:'「移動時間」では出発地点と到着地点、移動方式、出発年などを指定して候補経路を計算できます。結果は候補として表示され、既存の地図を勝手に変更しません。', target:tutByQuery('#modalBox'), expectModalOpen:true, action:{type:'modalclose'}, note:'移動時間タブを確認したら閉じて次へ進んでください' },
-        { title:'気候を推定する', desc:'「気候」では既存地図の位置・標高などから気候/バイオームの候補を計算します。あくまで候補として扱われ、既存データを自動上書きしません。', target:tutById('worldLabBtn'), view:'map' },
-        { title:'河川・流域候補', desc:'「河川」では地形・標高などをもとに河川候補を確認できます。採用するものだけを既存の河川データへ反映する、という確認型の使い方ができます。', target:tutById('worldLabBtn'), view:'map' },
-        { title:'計算結果を安全に記録する', desc:'世界解析の結果は「候補→確認→記録」という流れで扱います。記録操作は既存の変更履歴・Undo/Redoの対象なので、元データを保ったまま試行できます。', target:tutById('undoBtn') }
-      ]
-    },
-    { id:'militarydynasty', label:'軍事・家系', icon:'⚔',
-      desc:'軍事作戦・戦線・部隊・占領、人物の家系・王朝を既存の戦争や国家と関連付けて管理します。',
-      steps:[
-        { title:'軍事・家系を開く', desc:'地図画面上部の「⚔ 軍事・家系」から、戦争と連携した軍事情報や家系・王朝を管理できます。', target:tutById('historyLabBtn'), view:'map', action:{type:'click', sel:'#historyLabBtn'}, note:'「⚔ 軍事・家系」をクリックしてください' },
-        { title:'軍事作戦', desc:'既存の戦争を選び、作戦名・開始/終了年・指揮官・目的・結果などを登録できます。戦争データと別に孤立した記録を作るのではなく、既存の戦争IDと関連付けて管理します。', target:tutByQuery('#modalBox'), expectModalOpen:true, action:{type:'modalclose'}, note:'軍事・家系の内容を確認したら閉じてください' },
-        { title:'戦線・部隊・占領', desc:'戦線や部隊、占領状態も軍事データとして保持できます。地図上の軍事表示と組み合わせて、どの年代にどの地域で活動していたかを確認できます。', target:tutById('historyLabBtn'), view:'map' },
-        { title:'家系・王朝', desc:'人物同士の親族関係や王朝を既存の人物・国家と関連付けて管理できます。歴史上の人物データを別系統に複製するのではなく、既存IDを参照してつなげます。', target:tutById('historyLabBtn'), view:'map' },
-        { title:'軍事情報と歴史の連携', desc:'作戦・戦線・占領などの情報は年代や戦争と組み合わせて扱えます。地図上の領土変更や年表と併用することで、軍事行動と世界の変化を追跡できます。', target:tutById('mapTimeline'), view:'map' }
-      ]
-    },
-    { id:'economyculture', label:'経済・文化', icon:'💰',
-      desc:'資源・交易路・経済/文化影響圏・文化別の地名候補を既存の都市・国家・地域と関連付けて管理します。',
-      steps:[
-        { title:'経済・文化を開く', desc:'地図画面上部の「💰 経済・文化」から、資源・交易路・影響圏・地名生成をまとめて扱えます。', target:tutById('economyLabBtn'), view:'map', action:{type:'click', sel:'#economyLabBtn'}, note:'「💰 経済・文化」をクリックしてください' },
-        { title:'資源ノード', desc:'鉄・金・小麦・木材などの資源を、既存の都市や国家と関連付けて登録できます。資源量や地図上の位置も保持します。', target:tutByQuery('#modalBox'), expectModalOpen:true, action:{type:'modalclose'}, note:'資源タブを確認したら閉じてください' },
-        { title:'交易路', desc:'既存都市を出発地・到着地として、陸路・海路・河川交易・キャラバン路の交易路候補を作成できます。確認してから交易路として登録します。', target:tutById('economyLabBtn'), view:'map' },
-        { title:'影響圏', desc:'経済・文化・言語・宗教などの影響を、中心都市と半径などの情報で記録できます。既存の文化や言語を自動で上書きする機能ではありません。', target:tutById('economyLabBtn'), view:'map' },
-        { title:'文化別の地名生成', desc:'母音・子音・音節パターン・接頭辞・接尾辞を設定して地名候補を生成できます。生成名は候補として保存され、既存の都市・国家・地域への適用は明示的に選択したときだけ行われます。', target:tutById('economyLabBtn'), view:'map' }
-      ]
-    },
-    { id:'calendarastro', label:'暦・天象', icon:'☾',
-      desc:'独自暦の設定、日付と月齢の計算、複数の月、天象候補と天象イベントを学びます。',
-      steps:[
-        { title:'暦・天象を開く', desc:'地図画面上部の「☾ 暦・天象」から世界固有の暦と天象を管理できます。', target:tutById('calendarLabBtn'), view:'map', action:{type:'click', sel:'#calendarLabBtn'}, note:'「☾ 暦・天象」をクリックしてください' },
-        { title:'独自暦を設定する', desc:'1年の日数、月数、月名、各月の日数、週、紀元、年号、閏年ルールなどを設定できます。既存のcurrentYearなどの年代情報は維持され、独自暦がその上に追加されます。', target:tutByQuery('#modalBox'), expectModalOpen:true, action:{type:'modalclose'}, note:'暦設定を確認したら閉じてください' },
-        { title:'日付と月齢', desc:'指定した世界暦の日付から、登録された月の月齢・位相・照度を計算できます。計算結果を見るだけなら世界データは変更されません。', target:tutById('calendarLabBtn'), view:'map' },
-        { title:'複数の月', desc:'月ごとに名称・周期・位相オフセットを設定できるため、二つ以上の月を持つ世界にも対応できます。', target:tutById('calendarLabBtn'), view:'map' },
-        { title:'天象候補を記録する', desc:'指定年から新月・上弦・満月・下弦などの天象候補を計算し、確認したものだけを「天象イベント」として記録できます。自動で既存イベントを上書きすることはありません。', target:tutById('calendarLabBtn'), view:'map' }
-      ]
-    },
-    { id:'timelapse', label:'歴史タイムラプス', icon:'▶',
-      desc:'年代ごとの地図変化を再生し、地図とオーバーレイを合成したWebM動画として出力します。',
-      steps:[
-        { title:'タイムラプス再生', desc:'地図下部のタイムラインには、指定期間を自動で再生する「タイムラプス再生」があります。まずは画面上で歴史の変化を確認できます。', target:tutById('tlRangePlay'), view:'map' },
-        { title:'タイムラプス出力を開く', desc:'「⇩ タイムラプス出力」から、歴史タイムラプスを動画として書き出す設定を開けます。', target:tutById('tlExportBtn'), view:'map', action:{type:'click', sel:'#tlExportBtn'}, note:'「⇩ タイムラプス出力」をクリックしてください' },
-        { title:'出力範囲と刻み幅', desc:'開始年・終了年と年代ステップを指定できます。1年、5年、10年、25年、50年、100年刻みなどから、必要な歴史の粒度を選びます。', target:tutByQuery('#modalBox'), expectModalOpen:true, action:{type:'modalclose'}, note:'設定内容を確認したら閉じてください' },
-        { title:'動画形式と復元', desc:'地図本体とオーバーレイを合成してWebMとして出力します。出力中だけ年代を移動し、終了すると開始前の年代・表示状態へ戻るため、書き出しによって世界データを変更しません。', target:tutById('tlExportBtn'), view:'map' },
-        { title:'タイムラプスを活用する', desc:'完成した歴史地図を年代順に見せたいとき、国境・領土・都市・軍事表示などの変化を一本の動画として確認できます。チュートリアルでは実際の動画出力を行わず、設定画面までを確認します。', target:tutById('mapTimeline'), view:'map' }
-      ]
-    },
     { id:'admin', label:'管理', icon:'✎',
       desc:'ダッシュボード・バージョン・変更履歴・Undo/Redo・バックアップ・アセット管理・UI設定を学びます。',
       steps:[
@@ -6747,7 +6412,7 @@ function init(){
     if(b.dataset.p){const p=b.dataset.p==='L'?L:R,o=p===L?R:L;o.classList.remove('show');p.classList.toggle('show');}
     if(b.dataset.h) s.style.setProperty('--sh',b.dataset.h+'%');
     if(b.dataset.x){L.classList.remove('show');R.classList.remove('show');} sync();});
-  mq.addEventListener('change',place); place();
+  window.__msheetSync=sync; mq.addEventListener('change',place); place();
 }
 const ob=new MutationObserver(init); ob.observe(D.body,{childList:true,subtree:true}); init();
 /* 選択したらシートに情報を自動表示 */
@@ -6757,6 +6422,36 @@ const od=window.download; if(typeof od==='function') window.download=function(fn
   if(/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)){
     try{const f=new File([c],fn,{type:m||'application/octet-stream'}); if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f]}).catch(()=>od(fn,c,m));return;}}catch(_){} }
   return od(fn,c,m);};
+
+/* 初回ポップアップからチュートリアルを開始した場合(世界が未作成)、ウェルカム画面から本体画面へ切り替える */
+const oenter=window.tutEnterPracticeWorld;
+if(typeof oenter==='function') window.tutEnterPracticeWorld=function(){
+  const wl=$('#welcome'),ap=$('#app'); if(wl) wl.classList.add('hidden'); if(ap) ap.style.display='flex';
+  return oenter.apply(this,arguments); };
+/* チュートリアルUIのモバイル補正: カード/対象が画面外・非表示になって操作不能になる問題を防ぐ */
+const opos=window.tutPositionUI;
+if(typeof opos==='function'){
+  window.tutPositionUI=function(step){
+    if(mob()){
+      try{ const t=step&&step.target&&step.target();
+        if(t){ const p=t.closest&&t.closest('#mapLayerPanel,#mapRightPanel');
+          if(p&&!p.classList.contains('show')){ p.classList.add('show'); requestAnimationFrame(()=>window.tutPositionUI(step)); return; }
+          t.scrollIntoView({block:'nearest',inline:'nearest'}); } }catch(_){}
+    }
+    opos.apply(this,arguments);
+    if(!mob()) return;
+    const card=$('#tutCard'),hl=$('#tutHighlight'),vw=innerWidth,vh=vv?vv.height:innerHeight,w=Math.min(320,vw-16);
+    card.style.width=w+'px'; const h=card.offsetHeight, m=$('#modalOverlay').classList.contains('active');
+    const t=parseFloat(hl.style.top)||0, hh=parseFloat(hl.style.height)||0, b=t+hh, has=!hl.classList.contains('none')&&hh>14;
+    let y; if(m) y=8; else if(!has) y=Math.round(vh*.28);
+    else{ const up=t-8,dn=vh-b-8; y= up>=h+8 ? t-h-8 : dn>=h+8 ? b+8 : up>dn ? 8 : vh-h-8; }
+    card.style.left=Math.round((vw-w)/2)+'px'; card.style.top=Math.max(8,Math.min(y,vh-h-8))+'px';
+    root.style.setProperty('--tuth',(h+16)+'px'); root.classList.toggle('tut-m',m);
+  };
+}
+const oend=window.endTutorial;
+if(typeof oend==='function') window.endTutorial=function(){ root.classList.remove('tut-m'); const r=oend.apply(this,arguments);
+  const R=$('#mapRightPanel'),L=$('#mapLayerPanel'); if(R)R.classList.remove('show'); if(L)L.classList.remove('show'); if(window.__msheetSync) window.__msheetSync(); return r; };
 /* チュートリアル文言をタッチ用に置換(手順・操作制限は不変) */
 if(coarse){ const rep=t=>t.replace(/右クリック/g,'長押し').replace(/ダブルクリック/g,'ダブルタップ').replace(/クリック/g,'タップ').replace(/(?<!指で)ドラッグ/g,'指でドラッグ').replace(/ホイール/g,'ピンチ');
   const fix=n=>{const w=D.createTreeWalker(n,NodeFilter.SHOW_TEXT);let x;while(x=w.nextNode()){const v=rep(x.nodeValue);if(v!==x.nodeValue)x.nodeValue=v;}};
